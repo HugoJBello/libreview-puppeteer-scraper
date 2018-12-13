@@ -45,7 +45,7 @@ module.exports = class LibreViewScraper {
 
     async login(user, password) {
         console.log("logging in with " + user + " " + password)
-        await this.page.screenshot({ path: 'example.png' });
+        await this.page.screenshot({ path: 'log.png' });
 
         await this.page.focus('#Email');
         await this.page.keyboard.type(user);
@@ -65,7 +65,7 @@ module.exports = class LibreViewScraper {
         await button.click();
 
 
-        await this.page.screenshot({ path: 'example.png' });
+        await this.page.screenshot({ path: 'log.png' });
 
     }
 
@@ -77,7 +77,7 @@ module.exports = class LibreViewScraper {
 
             await this.page.waitFor(5 * this.timeWaitStart);
 
-            await this.page.screenshot({ path: 'example3.png' });
+            await this.page.screenshot({ path: 'log.png' });
 
             const numberOfPages = await this.getNumberOfPages();
 
@@ -100,7 +100,7 @@ module.exports = class LibreViewScraper {
     async extractDataFromPage() {
         await this.page.waitFor(2 * this.timeWaitStart);
 
-        await this.page.screenshot({ path: 'example3.png' });
+        await this.page.screenshot({ path: 'log.png' });
 
         //upldata-mod-avgs
 
