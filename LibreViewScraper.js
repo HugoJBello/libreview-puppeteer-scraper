@@ -12,7 +12,7 @@ module.exports = class LibreViewScraper {
         this.timeWaitStart = 500;
     }
 
-
+    //starts the process
     async startScraper(credentials) {
         try {
             await this.initializePuppeteer();
@@ -33,6 +33,7 @@ module.exports = class LibreViewScraper {
 
     }
 
+    //starts puppeteers broser and page
     async initializePuppeteer() {
         this.browser = await puppeteer.launch({
             // userAgent: randomUA.generate(),
@@ -42,7 +43,7 @@ module.exports = class LibreViewScraper {
         this.page = await this.browser.newPage();
     }
 
-
+    //logs in libreview using credentials
     async login(user, password) {
         console.log("logging in with " + user + " " + password)
         await this.page.screenshot({ path: 'log.png' });
@@ -53,13 +54,7 @@ module.exports = class LibreViewScraper {
         await this.page.focus('#Password');
         await this.page.keyboard.type(password);
 
-        //await this.page.keyboard.press(String.fromCharCode(13));
-        //await this.page.waitFor(this.timeWaitStart);
-
         await this.page.focus('#UserCulture');
-        //await this.page.keyboard.press(String.fromCharCode(13));
-
-        //console.log(await this.page.$$('.btn'));
 
         const button = await this.page.$('.btn');
         await button.click();
@@ -69,22 +64,22 @@ module.exports = class LibreViewScraper {
 
     }
 
+    // once we have logged in libreview, we can extract the glucose info
     async extractGlucoseTable() {
         try {
-            await this.page.waitFor(this.timeWaitStart);
-
-            //await this.page.goto(this.pageUrl);
-
-            await this.page.waitFor(5 * this.timeWaitStart);
+            await this.page.waitFor(6 * this.timeWaitStart);
 
             await this.page.screenshot({ path: 'log.png' });
 
+            // we obtain the number of pages to iterate them
             const numberOfPages = await this.getNumberOfPages();
 
             let data = [];
             for (let i = 0; i <= numberOfPages; i++) {
                 console.log("scraping page " + i);
                 await this.page.goto(this.pageUrl + i);
+
+                // we extract the data from the page and add it to the array
                 const pageData = await this.extractDataFromPage();
                 data.push(...pageData);
             }
@@ -98,45 +93,41 @@ module.exports = class LibreViewScraper {
     }
 
     async extractDataFromPage() {
-        await this.page.waitFor(2 * this.timeWaitStart);
+        try {
+            await this.page.waitFor(2 * this.timeWaitStart);
 
-        await this.page.screenshot({ path: 'log.png' });
+            await this.page.screenshot({ path: 'log.png' });
 
-        //upldata-mod-avgs
+            // we use the chrome console to query the data in the page
+            let listScraped = await this.page.evaluate(() => {
+                const list = [];
+                for (const query of document.querySelectorAll(".inner-left")) {
+                    const averageGlucoseMetric = query.querySelector("#average-glucose-metric").innerHTML;
+                    const averageTestPerDay = query.querySelector('#average-tests-per-day-metric').innerHTML.replace(",", ".");
+                    const hypoEventsMetric = query.querySelector('#hypo-events-metric').innerHTML;
+                    const date = query.querySelector('b').innerHTML;
+                    list.push({ averageGlucoseMetric, averageTestPerDay, hypoEventsMetric, date });;
+                }
 
-        let listScraped = await this.page.evaluate(() => {
-            const list = [];
-            for (const query of document.querySelectorAll(".inner-left")) {
-                const averageGlucoseMetric = query.querySelector("#average-glucose-metric").innerHTML;
-                const averageTestPerDay = query.querySelector('#average-tests-per-day-metric').innerHTML.replace(",", ".");
-                const hypoEventsMetric = query.querySelector('#hypo-events-metric').innerHTML;
-                const date = query.querySelector('b').innerHTML;
-                list.push({ averageGlucoseMetric, averageTestPerDay, hypoEventsMetric, date });;
-            }
+                return list;
+            });
+            return listScraped;
+        } catch (err) {
+            console.log(err);
+            return []
+        }
 
-            return list;
-        });
-        return listScraped;
     }
 
-    /*
-    async getActivePage() {
-        //console.log(document.querySelector('li.active').innerText)
-        const page = await this.page.evaluate(() => {
-            const page = document.querySelector('li.active').innerText;
-            return page;
-        });
-        return page;
-    }*/
-
+    // returns the number of pages with data.
     async getNumberOfPages() {
-        //document.getElementById("pageIndex").getElementsByTagName("li")
         return await this.page.evaluate(() => {
             const list = document.getElementById("pageIndex").getElementsByTagName("li");
             return list[list.length - 1].innerText;
         });
     }
 
+    //clicks and accesses the next page.
     async clickPage(page) {
         return await this.page.evaluate(() => {
             const list = document.getElementById("pageIndex").getElementsByTagName("li");
